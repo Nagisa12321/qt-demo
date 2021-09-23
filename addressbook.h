@@ -27,6 +27,7 @@ public slots:
     void cancel();
     void next();
     void prev();
+    void find();
 
     // change the mode
     void updateInterface(Mode mod);
@@ -46,6 +47,7 @@ private:
     QPushButton *prevButton;
     QPushButton *editButton;
     QPushButton *removeButton;
+    QPushButton *findButton;
 
     // mod
     Mode currentMod;

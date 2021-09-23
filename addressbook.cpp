@@ -1,8 +1,9 @@
-#include "addressbook.h"
 #include <QLabel>
 #include <QGridLayout>
 #include <QVBoxLayout>
 #include <QMessageBox>
+#include "addressbook.h"
+#include "find_dialog.h"
 
 Addressbook::Addressbook(QWidget *parent) :
     QWidget(parent) {
@@ -24,6 +25,7 @@ Addressbook::Addressbook(QWidget *parent) :
     prevButton = new QPushButton(tr("&Prev"));
     removeButton = new QPushButton(tr("&Remove"));
     editButton = new QPushButton(tr("&Edit"));
+    findButton = new QPushButton(tr("&Find"));
 
     addButton->show();
     editButton->show();
@@ -34,6 +36,9 @@ Addressbook::Addressbook(QWidget *parent) :
 
     nextButton->show();
     prevButton->show();
+
+    findButton->show();
+
     nextButton->setEnabled(false);
     prevButton->setEnabled(false);
 
@@ -51,6 +56,8 @@ Addressbook::Addressbook(QWidget *parent) :
     connect(editButton, &QPushButton::clicked, this, &Addressbook::editContact);
     connect(removeButton, &QPushButton::clicked, this, &Addressbook::removeContact);
 
+    connect(findButton, &QPushButton::clicked, this, &Addressbook::find);
+
     // layout of button
     QVBoxLayout *buttonLayout1 = new QVBoxLayout;
     buttonLayout1->addWidget(addButton, Qt::AlignTop);
@@ -58,6 +65,7 @@ Addressbook::Addressbook(QWidget *parent) :
     buttonLayout1->addWidget(cancelButton);
     buttonLayout1->addWidget(editButton);
     buttonLayout1->addWidget(removeButton);
+    buttonLayout1->addWidget(findButton);
     buttonLayout1->addStretch();
 
     // layout if next/prev
@@ -76,6 +84,25 @@ Addressbook::Addressbook(QWidget *parent) :
 
     setLayout(mainLayout);
     setWindowTitle("Simple Address Book");
+}
+
+void Addressbook::find() {
+    FindDialog dialog;
+    dialog.show();   
+
+    if (dialog.exec() == QDialog::Accepted) {
+        QString name = dialog.getFindText();
+
+        if (contacts.contains(name)) {
+            QMap<QString, QString>::iterator it = contacts.find(name);
+            nameLine->setText(it.key());
+            addressText->setText(it.value());
+        } else {
+            QMessageBox::information(this, tr("warnning"),
+                tr("the name \"%1\" is not exist!").arg(name));
+            return;
+        }
+    }
 }
 
 void Addressbook::addContact() {
@@ -192,6 +219,8 @@ void Addressbook::updateInterface(Mode mod) {
         prevButton->setEnabled(false);
         nextButton->setEnabled(false);
 
+        findButton->setEnabled(false);
+
         break;
     case Mode::NavigationMode:
         // restore
@@ -210,6 +239,7 @@ void Addressbook::updateInterface(Mode mod) {
         removeButton->show();
 
         int number = contacts.size();
+        findButton->setEnabled(true);
         prevButton->setEnabled(number > 1);
         nextButton->setEnabled(number > 1);
         removeButton->setEnabled(number);

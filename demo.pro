@@ -17,10 +17,12 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
     main.cpp \
-    addressbook.cpp
+    addressbook.cpp \
+    find_dialog.cpp
 
 HEADERS += \
-    addressbook.h
+    addressbook.h \
+    find_dialog.h
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
