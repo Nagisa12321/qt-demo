@@ -22,8 +22,13 @@ Addressbook::Addressbook(QWidget *parent) :
     cancelButton = new QPushButton(tr("&Cancel"));
     nextButton = new QPushButton(tr("&Next"));
     prevButton = new QPushButton(tr("&Prev"));
+    removeButton = new QPushButton(tr("&Remove"));
+    editButton = new QPushButton(tr("&Edit"));
 
     addButton->show();
+    editButton->show();
+    removeButton->show();
+
     submitButton->hide();
     cancelButton->hide();
 
@@ -32,7 +37,10 @@ Addressbook::Addressbook(QWidget *parent) :
     nextButton->setEnabled(false);
     prevButton->setEnabled(false);
 
-    // connect to the 'listener'
+    removeButton->setEnabled(false);
+    editButton->setEnabled(false);
+
+    // add the 'listener'
     connect(addButton, &QPushButton::clicked, this, &Addressbook::addContact);
     connect(submitButton, &QPushButton::clicked, this, &Addressbook::submitContact);
     connect(cancelButton, &QPushButton::clicked, this, &Addressbook::cancel);
@@ -40,11 +48,16 @@ Addressbook::Addressbook(QWidget *parent) :
     connect(nextButton, &QPushButton::clicked, this, &Addressbook::next);
     connect(prevButton, &QPushButton::clicked, this, &Addressbook::prev);
 
+    connect(editButton, &QPushButton::clicked, this, &Addressbook::editContact);
+    connect(removeButton, &QPushButton::clicked, this, &Addressbook::removeContact);
+
     // layout of button
     QVBoxLayout *buttonLayout1 = new QVBoxLayout;
     buttonLayout1->addWidget(addButton, Qt::AlignTop);
     buttonLayout1->addWidget(submitButton);
     buttonLayout1->addWidget(cancelButton);
+    buttonLayout1->addWidget(editButton);
+    buttonLayout1->addWidget(removeButton);
     buttonLayout1->addStretch();
 
     // layout if next/prev
@@ -72,13 +85,7 @@ void Addressbook::addContact() {
     nameLine->clear();
     addressText->clear();
 
-    nameLine->setReadOnly(false);
-    nameLine->setFocus(Qt::OtherFocusReason);
-    addressText->setReadOnly(false);
-
-    addButton->setEnabled(false);
-    submitButton->show();
-    cancelButton->show();
+    updateInterface(Mode::AddingMode);
 }
 
 void Addressbook::submitContact() {
@@ -89,56 +96,41 @@ void Addressbook::submitContact() {
         QMessageBox::information(this, tr("warnning"),
                                  tr("the name or the address should not be empty!"));
         return;
+    } else if (contacts.contains(newName)) {
+        if (currentMod == Mode::AddingMode) {
+            QMessageBox::information(this, tr("warnning"),
+                                     tr("the name \"%1\" has already exist!").arg(newName));
+            return;
+        } else {
+            contacts.insert(newName, newAddress);
+            QMessageBox::information(this, tr("successful"),
+                                     tr("\"%1\" has been changed!").arg(newName));
+        }
+    } else {
+        contacts.insert(newName, newAddress);
+        QMessageBox::information(this, tr("successful"),
+                                 tr("\"%1\" has been add to your address book!").arg(newName));
     }
 
-    if (contacts.contains(newName)) {
-        QMessageBox::information(this, tr("warnning"),
-                                 tr("the name \"%1\" has already exist!").arg(newName));
-        return;
-    }
-
-    contacts.insert(newName, newAddress);
-    QMessageBox::information(this, tr("successful"),
-                             tr("\"%1\" has been add to your address book!").arg(newName));
-
-    // restore
-    if (contacts.isEmpty()) {
-        nameLine->clear();
-        addressText->clear();
-    }
-
-    nameLine->setReadOnly(true);
-    addressText->setReadOnly(true);
-
-    addButton->setEnabled(true);
-    cancelButton->hide();
-    submitButton->hide();
-
-    int number = contacts.size();
-    prevButton->setEnabled(number > 1);
-    nextButton->setEnabled(number > 1);
+    updateInterface(Mode::NavigationMode);
 }
 
 void Addressbook::cancel() {
     nameLine->setText(oldName);
-    nameLine->setReadOnly(true);
-
     addressText->setText(oldAddress);
-    addressText->setReadOnly(true);
 
-    addButton->setEnabled(true);
-    submitButton->hide();
-    cancelButton->hide();
+    updateInterface(Mode::NavigationMode);
 }
 
 void Addressbook::next() {
     QString name = nameLine->text();
 
     QMap<QString, QString>::iterator it = contacts.find(name);
-    if (it + 1 == contacts.end()) 
+    if (it + 1 == contacts.end())
         it = contacts.begin();
-    else ++it;
-        
+    else
+        ++it;
+
     nameLine->setText(it.key());
     addressText->setText(it.value());
 }
@@ -147,12 +139,83 @@ void Addressbook::prev() {
     QString name = nameLine->text();
 
     QMap<QString, QString>::iterator it = contacts.find(name);
-    if (it == contacts.begin()) 
+    if (it == contacts.begin())
         it = contacts.end() - 1;
-    else --it;
-        
+    else
+        --it;
+
     nameLine->setText(it.key());
     addressText->setText(it.value());
+}
+
+void Addressbook::removeContact() {
+    QString name = nameLine->text();
+
+    if (contacts.contains(name)) {
+        int button = QMessageBox::question(this, tr("Comfirm remove"), 
+                        tr("r u sure to remove \"%1\"?").arg(name), 
+                        QMessageBox::Yes | QMessageBox::No);
+        if (button == QMessageBox::Yes) {
+            prev();
+            contacts.remove(name);
+            QMessageBox::information(this, tr("Remove success!"),  
+                    tr("\"%1\" had been removed.").arg(name));
+        }
+    }
+
+    updateInterface(Mode::NavigationMode);
+}
+
+void Addressbook::editContact() {
+    oldName = nameLine->text();
+    oldAddress = addressText->toPlainText();
+    updateInterface(Mode::EditingMode);
+    addressText->setFocus(Qt::OtherFocusReason);
+}
+
+void Addressbook::updateInterface(Mode mod) {
+    currentMod = mod;
+
+    switch (currentMod) {
+    case Mode::AddingMode:
+        nameLine->setReadOnly(false);
+        nameLine->setFocus(Qt::OtherFocusReason);
+    case Mode::EditingMode:
+        addressText->setReadOnly(false);
+        addButton->setEnabled(false);
+
+        editButton->setEnabled(false);
+        removeButton->setEnabled(false);
+        submitButton->show();
+        cancelButton->show();
+
+        prevButton->setEnabled(false);
+        nextButton->setEnabled(false);
+
+        break;
+    case Mode::NavigationMode:
+        // restore
+        if (contacts.isEmpty()) {
+            nameLine->clear();
+            addressText->clear();
+        }
+
+        nameLine->setReadOnly(true);
+        addressText->setReadOnly(true);
+
+        addButton->setEnabled(true);
+        cancelButton->hide();
+        submitButton->hide();
+        editButton->show();
+        removeButton->show();
+
+        int number = contacts.size();
+        prevButton->setEnabled(number > 1);
+        nextButton->setEnabled(number > 1);
+        removeButton->setEnabled(number);
+        editButton->setEnabled(number);
+        break;
+    }
 }
 
 Addressbook::~Addressbook() {

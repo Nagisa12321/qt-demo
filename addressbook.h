@@ -6,6 +6,12 @@
 #include <QTextEdit>
 #include <QPushButton>
 
+enum Mode {
+    NavigationMode,
+    AddingMode,
+    EditingMode
+};
+
 class Addressbook : public QWidget {
     Q_OBJECT
 
@@ -16,22 +22,32 @@ public:
 public slots:
     void addContact();
     void submitContact();
+    void editContact();
+    void removeContact();
     void cancel();
     void next();
     void prev();
 
+    // change the mode
+    void updateInterface(Mode mod);
 
 private:
     QMap<QString, QString> contacts;
     QString oldName;
     QString oldAddress;
-    QPushButton *addButton;
-    QPushButton *submitButton;
-    QPushButton *cancelButton;
     QLineEdit *nameLine;
     QTextEdit *addressText;
 
+    // btns 
+    QPushButton *submitButton;
+    QPushButton *cancelButton;
+    QPushButton *addButton;
     QPushButton *nextButton;
     QPushButton *prevButton;
+    QPushButton *editButton;
+    QPushButton *removeButton;
+
+    // mod
+    Mode currentMod;
 };
 #endif // ADDRESSBOOK_H
