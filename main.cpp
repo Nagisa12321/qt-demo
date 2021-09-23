@@ -5,7 +5,7 @@
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
-    addressbook book;
+    Addressbook book;
     book.show();
     return a.exec();
 }
