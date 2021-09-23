@@ -73,3 +73,5 @@ Thumbs.db
 *.exe
 
 .clang*
+
+test

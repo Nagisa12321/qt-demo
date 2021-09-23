@@ -28,6 +28,8 @@ public slots:
     void next();
     void prev();
     void find();
+    void save();
+    void load();
 
     // change the mode
     void updateInterface(Mode mod);
@@ -48,6 +50,8 @@ private:
     QPushButton *editButton;
     QPushButton *removeButton;
     QPushButton *findButton;
+    QPushButton *saveButton;
+    QPushButton *loadButton;
 
     // mod
     Mode currentMod;

@@ -2,6 +2,7 @@
 #include <QGridLayout>
 #include <QVBoxLayout>
 #include <QMessageBox>
+#include <QFileDialog>
 #include "addressbook.h"
 #include "find_dialog.h"
 
@@ -26,6 +27,8 @@ Addressbook::Addressbook(QWidget *parent) :
     removeButton = new QPushButton(tr("&Remove"));
     editButton = new QPushButton(tr("&Edit"));
     findButton = new QPushButton(tr("&Find"));
+    saveButton = new QPushButton(tr("&Save"));
+    loadButton = new QPushButton(tr("&Load"));
 
     addButton->show();
     editButton->show();
@@ -38,6 +41,9 @@ Addressbook::Addressbook(QWidget *parent) :
     prevButton->show();
 
     findButton->show();
+
+    saveButton->show();
+    loadButton->show();
 
     nextButton->setEnabled(false);
     prevButton->setEnabled(false);
@@ -58,6 +64,9 @@ Addressbook::Addressbook(QWidget *parent) :
 
     connect(findButton, &QPushButton::clicked, this, &Addressbook::find);
 
+    connect(saveButton, &QPushButton::clicked, this, &Addressbook::save);
+    connect(loadButton, &QPushButton::clicked, this, &Addressbook::load);
+
     // layout of button
     QVBoxLayout *buttonLayout1 = new QVBoxLayout;
     buttonLayout1->addWidget(addButton, Qt::AlignTop);
@@ -66,6 +75,8 @@ Addressbook::Addressbook(QWidget *parent) :
     buttonLayout1->addWidget(editButton);
     buttonLayout1->addWidget(removeButton);
     buttonLayout1->addWidget(findButton);
+    buttonLayout1->addWidget(saveButton);
+    buttonLayout1->addWidget(loadButton);
     buttonLayout1->addStretch();
 
     // layout if next/prev
@@ -86,9 +97,61 @@ Addressbook::Addressbook(QWidget *parent) :
     setWindowTitle("Simple Address Book");
 }
 
+void Addressbook::save() {
+    QString fileName =
+        QFileDialog::getSaveFileName(this,
+                                     tr("Save Address Book"), "",
+                                     tr("Address Book (*.abk);;All Files (*)"));
+    if (fileName.isEmpty())
+        return;
+
+    QFile file(fileName);
+    if (!file.open(QIODevice::ReadWrite)) {
+        QMessageBox::information(this, tr("Unable to open file"),
+                                 file.errorString());
+        return;
+    }
+
+    QDataStream out(&file);
+    out.setVersion(QDataStream::Qt_4_5);
+    out << contacts;
+}
+
+void Addressbook::load() {
+    QString fileName =
+        QFileDialog::getOpenFileName(this,
+                                     tr("Open Address Book"), "",
+                                     tr("Address Book (*.abk);;All Files (*)"));
+    if (fileName.isEmpty())
+        return;
+
+    QFile file(fileName);
+    if (!file.open(QIODevice::ReadWrite)) {
+        QMessageBox::information(this, tr("Unable to open file"),
+                                 file.errorString());
+        return;
+    }
+
+    QDataStream in(&file);
+    in.setVersion(QDataStream::Qt_4_5);
+    contacts.clear(); // clear existing contacts
+    in >> contacts;
+
+    if (contacts.isEmpty()) {
+        QMessageBox::information(this, tr("No contacts in file"),
+                                 tr("The file you are attempting to open contains no contacts."));
+    } else {
+        QMap<QString, QString>::iterator i = contacts.begin();
+        nameLine->setText(i.key());
+        addressText->setText(i.value());
+    }
+
+    updateInterface(Mode::NavigationMode);
+}
+
 void Addressbook::find() {
     FindDialog dialog;
-    dialog.show();   
+    dialog.show();
 
     if (dialog.exec() == QDialog::Accepted) {
         QString name = dialog.getFindText();
@@ -99,7 +162,7 @@ void Addressbook::find() {
             addressText->setText(it.value());
         } else {
             QMessageBox::information(this, tr("warnning"),
-                tr("the name \"%1\" is not exist!").arg(name));
+                                     tr("the name \"%1\" is not exist!").arg(name));
             return;
         }
     }
@@ -179,14 +242,14 @@ void Addressbook::removeContact() {
     QString name = nameLine->text();
 
     if (contacts.contains(name)) {
-        int button = QMessageBox::question(this, tr("Comfirm remove"), 
-                        tr("r u sure to remove \"%1\"?").arg(name), 
-                        QMessageBox::Yes | QMessageBox::No);
+        int button = QMessageBox::question(this, tr("Comfirm remove"),
+                                           tr("r u sure to remove \"%1\"?").arg(name),
+                                           QMessageBox::Yes | QMessageBox::No);
         if (button == QMessageBox::Yes) {
             prev();
             contacts.remove(name);
-            QMessageBox::information(this, tr("Remove success!"),  
-                    tr("\"%1\" had been removed.").arg(name));
+            QMessageBox::information(this, tr("Remove success!"),
+                                     tr("\"%1\" had been removed.").arg(name));
         }
     }
 
@@ -211,8 +274,11 @@ void Addressbook::updateInterface(Mode mod) {
         addressText->setReadOnly(false);
         addButton->setEnabled(false);
 
-        editButton->setEnabled(false);
-        removeButton->setEnabled(false);
+        editButton->hide();
+        removeButton->hide();
+        saveButton->hide();
+        loadButton->hide();
+
         submitButton->show();
         cancelButton->show();
 
@@ -220,7 +286,6 @@ void Addressbook::updateInterface(Mode mod) {
         nextButton->setEnabled(false);
 
         findButton->setEnabled(false);
-
         break;
     case Mode::NavigationMode:
         // restore
@@ -239,9 +304,13 @@ void Addressbook::updateInterface(Mode mod) {
         removeButton->show();
 
         int number = contacts.size();
+        saveButton->show();
+        loadButton->show();
         findButton->setEnabled(true);
         prevButton->setEnabled(number > 1);
         nextButton->setEnabled(number > 1);
+        removeButton->show();
+        editButton->show();
         removeButton->setEnabled(number);
         editButton->setEnabled(number);
         break;
